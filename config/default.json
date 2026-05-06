@@ -1,0 +1,31 @@
+{
+  "workspaceRoot": ".",
+  "model": {
+    "provider": "deepseek",
+    "name": "deepseek-chat",
+    "apiKey": "",
+    "subAgentModel": "deepseek-chat",
+    "subAgentProvider": "deepseek"
+  },
+  "context": {
+    "maxTokens": 120000,
+    "reservedTokensForResponse": 4096,
+    "summarizationThreshold": 0.7,
+    "enableSummarization": true,
+    "keepLastNMessages": 6,
+    "subAgentMaxTokens": 8000
+  },
+  "sandbox": {
+    "allowedCommands": ["ls", "cat", "grep", "find", "git", "npm", "pnpm", "yarn", "node", "python", "tsc", "eslint", "prettier", "jest", "vitest", "cargo", "go", "rustc"],
+    "blockedCommands": ["rm -rf", "sudo", "chmod 777", "curl", "wget", ">", ">>"],
+    "timeoutMs": 30000,
+    "maxOutputBytes": 102400
+  },
+  "tools": {
+    "smartEdit": { "enabled": true, "maxFileSize": 1048576 },
+    "globSearch": { "enabled": true, "maxResults": 50 },
+    "grepSearch": { "enabled": true, "maxResults": 30 },
+    "bashExec": { "enabled": true },
+    "taskAgent": { "enabled": true, "maxConcurrent": 3 }
+  }
+}

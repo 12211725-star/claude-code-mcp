@@ -1,0 +1,32 @@
+{
+  "name": "claude-code-agent-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server porting Claude Code's agent architecture to domestic LLMs",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "claude-code-agent": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "inspect": "npx @modelcontextprotocol/inspector dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-sqlite3": "^12.9.0",
+    "diff": "^8.0.4",
+    "execa": "^9.1.0",
+    "glob": "^10.3.0",
+    "openai": "^4.50.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.1"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "claude-code-agent": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["E:/代码工作区/claude-code-mcp/dist/index.js"],
+      "env": {
+        "DEEPSEEK_API_KEY": "sk-01978f000050489d980a02829a6920a3",
+        "WORKSPACE_ROOT": "E:/代码工作区"
+      }
+    }
+  }
+}
