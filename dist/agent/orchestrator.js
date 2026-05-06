@@ -9,8 +9,23 @@ const DEFAULT_ORCHESTRATOR_CONFIG = {
     maxIterations: 10,
     planBeforeExecute: true,
 };
-// Regex to parse <tool_call> JSON blocks from model output
-const TOOL_CALL_REGEX = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g;
+// Multiple patterns to parse tool calls from model output
+// Supports: 1) <tool_call>JSON, 2) ```json code blocks, 3) inline JSON
+const TOOL_CALL_PATTERNS = [
+    /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g, // Standard format
+    /```json\s*([\s\S]*?)\s*```/g, // Markdown code block
+    /\{[\s\S]*?"tool"[\s\S]*?"args"[\s\S]*?\}/g, // Inline JSON
+];
+// Known tool names for validation
+const KNOWN_TOOLS = [
+    "glob_search",
+    "grep_search",
+    "read_file",
+    "write_file",
+    "smart_edit",
+    "bash_exec",
+    "task_agent",
+];
 /**
  * Agent Orchestrator — multi-turn agent loop porting Claude Code's architecture.
  *
@@ -114,30 +129,69 @@ export class AgentOrchestrator {
         }
     }
     /**
-     * Parse <tool_call> JSON blocks from model output.
+     * Parse tool calls from model output using multiple patterns.
+     * Supports: 1) <tool_call>JSON, 2) ```json code blocks, 3) inline JSON
      */
     parseToolCalls(text) {
         const calls = [];
+        // Pattern 1: Standard <tool_call> JSON format
+        const pattern1 = /<tool_call>\s*([\s\S]*?)\s*<\/tool_call>/g;
         let match;
-        // Reset regex state
-        TOOL_CALL_REGEX.lastIndex = 0;
-        while ((match = TOOL_CALL_REGEX.exec(text)) !== null) {
-            try {
-                const json = match[1].trim();
-                const parsed = JSON.parse(json);
-                // Support both single object and array of tool calls
-                const items = Array.isArray(parsed) ? parsed : [parsed];
-                for (const item of items) {
-                    if (item.tool && item.args) {
-                        calls.push({ tool: item.tool, args: item.args });
-                    }
-                }
-            }
-            catch {
-                logger.warn(`Failed to parse tool_call JSON: ${match[1].substring(0, 100)}`);
+        while ((match = pattern1.exec(text)) !== null) {
+            const parsed = this.tryParseToolCall(match[1].trim());
+            if (parsed)
+                calls.push(...parsed);
+        }
+        // Pattern 2: Markdown code blocks with json
+        const pattern2 = /```json\s*([\s\S]*?)\s*```/g;
+        while ((match = pattern2.exec(text)) !== null) {
+            const parsed = this.tryParseToolCall(match[1].trim());
+            if (parsed)
+                calls.push(...parsed);
+        }
+        // Pattern 3: Inline JSON with tool/args keys (only if no matches yet)
+        if (calls.length === 0) {
+            const pattern3 = /\{[^{}]*"tool"[^{}]*"args"[^{}]*\}/g;
+            while ((match = pattern3.exec(text)) !== null) {
+                const parsed = this.tryParseToolCall(match[0]);
+                if (parsed)
+                    calls.push(...parsed);
             }
         }
-        return calls;
+        // Deduplicate by tool+args
+        const seen = new Set();
+        return calls.filter(c => {
+            const key = `${c.tool}:${JSON.stringify(c.args)}`;
+            if (seen.has(key))
+                return false;
+            seen.add(key);
+            return true;
+        });
+    }
+    /**
+     * Try to parse a single tool call JSON string.
+     */
+    tryParseToolCall(jsonStr) {
+        try {
+            const parsed = JSON.parse(jsonStr);
+            const items = Array.isArray(parsed) ? parsed : [parsed];
+            const valid = [];
+            for (const item of items) {
+                // Validate tool name
+                if (item.tool && KNOWN_TOOLS.includes(item.tool) && item.args) {
+                    valid.push({ tool: item.tool, args: item.args });
+                }
+                // Also support 'name' field for tool
+                else if (item.name && KNOWN_TOOLS.includes(item.name) && item.arguments) {
+                    valid.push({ tool: item.name, args: item.arguments });
+                }
+            }
+            return valid.length > 0 ? valid : null;
+        }
+        catch (e) {
+            logger.warn(`Failed to parse tool_call JSON: ${jsonStr.substring(0, 100)}`);
+            return null;
+        }
     }
     /**
      * Execute a single tool call against the tool registry.

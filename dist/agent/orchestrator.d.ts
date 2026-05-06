@@ -30,9 +30,14 @@ export declare class AgentOrchestrator {
      */
     execute(taskDescription: string, ctx: AppContext): Promise<ExecutionResult>;
     /**
-     * Parse <tool_call> JSON blocks from model output.
+     * Parse tool calls from model output using multiple patterns.
+     * Supports: 1) <tool_call>JSON, 2) ```json code blocks, 3) inline JSON
      */
     private parseToolCalls;
+    /**
+     * Try to parse a single tool call JSON string.
+     */
+    private tryParseToolCall;
     /**
      * Execute a single tool call against the tool registry.
      */
